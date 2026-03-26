@@ -11,7 +11,7 @@ module.exports.config = {
 	cooldowns: 10,
     usePrefix: true,
 	dependencies: {
-		"canvas":"",
+		"@napi-rs/canvas":"",
 		 "axios":"",
 		 "fs-extra":"",
 		 "path": ""
@@ -49,7 +49,7 @@ module.exports.wrapText = (ctx, text, maxWidth) => {
 
 module.exports.run = async function({ api, event, args }) {
 	let { senderID, threadID, messageID } = event;
-	const { loadImage, createCanvas } = require("canvas");
+	const { loadImage, createCanvas } = require("@napi-rs/canvas");
 	const fs = global.nodemodule["fs-extra"];
 	const axios = global.nodemodule["axios"];
 	let pathImg = __dirname + '/cache/trump.png';

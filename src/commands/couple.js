@@ -1,4 +1,4 @@
-const { createCanvas, loadImage } = require('canvas');
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const axios = require("axios");
 const fs = require("fs-extra");
 const path = require("path");
@@ -14,7 +14,7 @@ module.exports.config = {
     cooldowns: 5,
     usePrefix: true,
     dependencies: {
-        "canvas": "",
+        "@napi-rs/canvas": "",
         "axios": "",
         "fs-extra": "",
         "path": ""

@@ -11,7 +11,7 @@ module.exports = {
     guide: "{pn} @mention\n{pn} reply\n{pn} (random pair)"
   },
   onStart: async function({ message, args, event, api, usersData, threadsData }) {
-    const { createCanvas, loadImage } = require('canvas');
+    const { createCanvas, loadImage } = require('@napi-rs/canvas');
     const fs = require('fs-extra');
     const path = require('path');
     const axios = require('axios');

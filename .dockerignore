@@ -1,0 +1,15 @@
+node_modules
+package-lock.json
+npm-debug.log
+appstate.json
+data
+cache
+tmp
+temp
+logs
+.git
+.vscode
+.idea
+.env
+*.json.tmp
+*.json.backup

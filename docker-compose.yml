@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: cyber-bot-v2
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./data:/usr/src/app/data
+      - ./cache:/usr/src/app/cache
+      - ./appstate.json:/usr/src/app/appstate.json
+    ports:
+      - "3000:3000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10mb"
+        max-file: "3"

@@ -1,7 +1,7 @@
 const moment = require("moment-timezone");
 const fs = require("fs-extra");
 const axios = require("axios");
-const Canvas = require("canvas");
+const Canvas = require("@napi-rs/canvas");
 const path = require("path");
 
 module.exports = {

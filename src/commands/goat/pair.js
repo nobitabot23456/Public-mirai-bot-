@@ -28,7 +28,7 @@ module.exports = {
     commandName,
     getLang,
   }) {
-    const { loadImage, createCanvas } = require("canvas");
+    const { loadImage, createCanvas } = require("@napi-rs/canvas");
     let pathImg = __dirname + "/tmp/background.png";
     let pathAvt1 = __dirname + "/tmp/ayn.png";
     let pathAvt2 = __dirname + "/tmp/avatar.png";
