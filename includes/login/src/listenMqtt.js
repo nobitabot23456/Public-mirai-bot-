@@ -114,12 +114,11 @@ function listenMqtt(defaultFuncs, api, ctx, globalCallback) {
 
         // Display connection success message with branding and loading animation
         const messages = [
-            '\n✅ MQTT Connected',
+            '\n✅ ST-FCA MQTT Connected',
             `📍 Region: ${ctx.region || 'PNB'}`,
             `🔄 Auto-reconnect: ${ctx.globalOptions.autoReconnect ? 'Enabled' : 'Disabled'}${ctx.globalOptions.autoReconnect ? ' (reconnects every 3s on disconnect)' : ''}`,
             `⏱️  MQTT Restart Interval: ${ctx.globalOptions.restartListenMqtt?.enable ? `${ctx.globalOptions.restartListenMqtt.timeRestart / 1000}s` : 'Disabled'}`,
-            `🌐 Proxy: ${ctx.globalOptions.proxy || 'None'}`,
-            `🔑 User Agent: ${ctx.globalOptions.userAgent || 'Default'}`
+            '🎨 Maintained & Enhanced by ST | Sheikh Tamim\n'
         ];
 
         let index = 0;

@@ -1,4 +1,13 @@
-// By @sheikhtamimlover0
+/**
+ * ===========================================================
+ * 🧑‍💻 Author: Sheikh Tamim (ST | Sheikh Tamim)
+ * 🔰 Owner & Developer
+ * 🌐 GitHub: https://github.com/sheikhtamimlover
+ * 📸 Instagram: https://instagram.com/sheikh.tamim_lover
+ * -----------------------------------------------------------
+ * 🕊️ Respect the creator & give proper credits if reused.
+ * ===========================================================
+ */
 'use strict';
 
 var utils = require('../utils.js');

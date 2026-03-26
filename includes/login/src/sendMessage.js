@@ -191,23 +191,11 @@ module.exports = (defaultFuncs, api, ctx) => {
 			if (utils.getType(msg.attachment) !== "Array") {
 				msg.attachment = [msg.attachment];
 			}
-		// 	const files = await uploadAttachment(msg.attachment);
-		// 		files.forEach(file => {
-		// 				const type = Object.keys(file)[0];
-		// 				form["" + type + "s"].push(file[type]);
-		// 		}); 
-		// }
 			const files = await uploadAttachment(msg.attachment);
-			if (files && Array.isArray(files)) {
-				files.forEach(file => {
-					if (file && typeof file === 'object') {
-						const type = Object.keys(file)[0];
-						if (type && form["" + type + "s"]) {
-							form["" + type + "s"].push(file[type]);
-						}
-					}
-				});
-			}
+			files.forEach(file => {
+					const type = Object.keys(file)[0];
+					form["" + type + "s"].push(file[type]);
+			}); 
 		}
 		if (msg.url) {
 			form["shareable_attachment[share_type]"] = "100";
@@ -246,10 +234,25 @@ module.exports = (defaultFuncs, api, ctx) => {
 				form["profile_xmd[" + i + "][type]"] = "p";
 			}
 		}
-		const result = await sendContent(form, threadID, isSingleUser, messageAndOTID);
-		if (callback && typeof callback === "function") {
-			callback(null, result);
+		const configSource = (global.GoatBot && global.GoatBot.config) ? global.GoatBot.config : ctx.config || {};
+		const enableTypingIndicator = typeof configSource.enableTypingIndicator !== 'undefined' ? configSource.enableTypingIndicator : ctx.config?.enableTypingIndicator;
+		const typingDuration = Number(configSource.typingDuration || ctx.config?.typingDuration || 4000);
+
+		if (enableTypingIndicator) {
+			await api.sendTypingIndicator(true, threadID, () => {});
+			await utils.delay(typingDuration);
+			const result = await sendContent(form, threadID, isSingleUser, messageAndOTID);
+			await api.sendTypingIndicator(false, threadID, () => {});
+			if (callback && typeof callback === "function") {
+				callback(null, result);
+			}
+			return result;
+		} else {
+			const result = await sendContent(form, threadID, isSingleUser, messageAndOTID);
+			if (callback && typeof callback === "function") {
+				callback(null, result);
+			}
+			return result;
 		}
-		return result;
 	};
 };

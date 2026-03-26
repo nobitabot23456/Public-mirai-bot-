@@ -1,4 +1,26 @@
-// By @sheikhtamimlover0
+/**
+ * ===========================================================
+ * 💫 META THEME GENERATOR MODULE 💫
+ * ===========================================================
+ * 🧑‍💻 Author: Sheikh Tamim (ST | Sheikh Tamim)
+ * 🔰 Owner & Developer
+ * 🌐 GitHub: https://github.com/sheikhtamimlover
+ * 📸 Instagram: https://instagram.com/sheikh.tamim_lover
+ * 🧠 Description:
+ *   This module generates beautiful Messenger AI themes 
+ *   using Meta's hidden GraphQL endpoints. It allows you to 
+ *   create unique chat themes based on your custom prompt 
+ *   or optional image inspiration.
+ * -----------------------------------------------------------
+ * ⚙️ Features:
+ *   • Generate AI-based Messenger chat themes.
+ *   • Custom prompt & optional image URL input.
+ *   • Returns structured theme data with full color mapping.
+ * -----------------------------------------------------------
+ * 🕊️ Respect the creator & give proper credits if reused.
+ * ===========================================================
+ */
+
 "use strict";
 
 const utils = require("../utils");
