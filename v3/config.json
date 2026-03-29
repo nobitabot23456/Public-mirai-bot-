@@ -1,6 +1,8 @@
 {
   "BOTNAME": "Cyber-Bot v3",
   "PREFIX": "!",
+  "rbac": true,
+  "rbacMode": 2,
   "ADMINBOT": [
     "100002672611442"
   ],
@@ -8,5 +10,6 @@
     "100002672611442"
   ],
   "enableTypingIndicator": false,
-  "typingDuration": 1000
+  "typingDuration": 1000,
+  "helpGrid": 2
 }
