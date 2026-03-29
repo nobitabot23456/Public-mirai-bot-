@@ -3,20 +3,31 @@ import path from "path";
 import { messageHandler } from "../../handlers/messageHandler";
 import { getConfig, saveConfig } from "./Config";
 import { getPermissionLevel } from "./RBAC";
-import { commands } from "./Loader";
+import { commands, aliases } from "./Loader";
+import { db } from "./Database";
+import { Command } from "./types";
 
 function truncateLine(text: string): string {
     const firstLine = text.split("\n")[0];
-    if (firstLine.length < text.length || firstLine.length > 50) {
-        return firstLine.substring(0, 50) + "...";
-    }
-    return firstLine;
+    return firstLine.length > 50 ? firstLine.substring(0, 47) + "..." : firstLine;
 }
 
 export async function handleMessage(api: any, event: any) {
     const config = getConfig();
     const message = messageHandler({ api, event });
     const body = (message.body || "").trim();
+    
+    try {
+        await db.saveMessage({
+            messageID: event.messageID,
+            threadID: event.threadID,
+            senderID: event.senderID,
+            body: body,
+            timestamp: event.timestamp
+        });
+    } catch (e) {
+        console.error("[ DB ] Failed to save message:", e);
+    }
     
     if (body) {
         console.log(`[ MSG ] From: ${event.senderID} | Body: "${truncateLine(body)}"`);
@@ -27,55 +38,55 @@ export async function handleMessage(api: any, event: any) {
 
     let commandMatched = false;
     const permissionLevel = getPermissionLevel(event.senderID);
-    const lowBody = body.toLowerCase();
+    const prefix = config.PREFIX || "!";
+    
+    // Command matching
+    let cmdName: string | undefined;
+    let isPrefixed = false;
 
-    // Basic command dispatcher
-    for (const [name, command] of commands) {
-        const hasPermission = command.config.hasPermission || 0;
-        const prefixName = config.PREFIX + name;
-        
-        const isPrefixed = (lowBody === prefixName || lowBody.startsWith(prefixName + " ")) && command.config.usePrefix;
-        const isNoPrefix = (lowBody === name || lowBody.startsWith(name + " ")) && !command.config.usePrefix;
+    if (body.startsWith(prefix)) {
+        cmdName = body.slice(prefix.length).trim().split(/\s+/)[0]?.toLowerCase();
+        isPrefixed = true;
+    } else {
+        cmdName = body.split(/\s+/)[0]?.toLowerCase();
+        isPrefixed = false;
+    }
 
-        if (isPrefixed || isNoPrefix) {
-            commandMatched = true;
-            console.log(`[ MATCH ] Command: ${name} (lvl ${permissionLevel} vs ${hasPermission})`);
-            
-            // Check permission if RBAC is enabled
-            if (config.rbac) {
-                const rbacMode = config.rbacMode || 0;
-                
-                // Global Mode Checks
-                if (rbacMode === 2 && permissionLevel < 2) {
-                    console.log(`[ RBAC ] Owner-Only Mode denial for ${name}`);
-                    await message.reply(`⛔ Bot is currently in **Owner-Only** mode. Access denied.`);
-                    return;
+    if (cmdName) {
+        // Resolve alias to primary name
+        const primaryName = aliases.get(cmdName) || cmdName;
+        const command = commands.get(primaryName);
+
+        if (command) {
+            const hasPermission = command.config.hasPermission || 0;
+            const usePrefix = command.config.usePrefix !== false; // Default to true
+
+            // Match if: (prefixed and cmd uses prefix) OR (not prefixed and cmd doesn't use prefix)
+            if ((isPrefixed && usePrefix) || (!isPrefixed && !usePrefix)) {
+                commandMatched = true;
+                console.log(`[ MATCH ] Command: ${primaryName} (lvl ${permissionLevel} vs ${hasPermission})`);
+
+                // RBAC Check
+                if (config.rbac) {
+                    const rbacMode = config.rbacMode || 0;
+                    if (rbacMode === 2 && permissionLevel < 2) {
+                        return message.reply(`⛔ Bot is currently in **Owner-Only** mode. Access denied.`);
+                    }
+                    if (rbacMode === 1 && permissionLevel < 1) {
+                        return message.reply(`🚫 Bot is currently in **Admin-Only** mode. Access denied.`);
+                    }
+                    if (permissionLevel < hasPermission) {
+                        return message.reply(`❌ You don't have permission to use "${primaryName}". Requires level ${hasPermission}.`);
+                    }
                 }
-                
-                if (rbacMode === 1 && permissionLevel < 1) {
-                    console.log(`[ RBAC ] Admin-Only Mode denial for ${name}`);
-                    await message.reply(`🚫 Bot is currently in **Admin-Only** mode. Access denied.`);
-                    return;
-                }
 
-                // Command-specific Permission Check
-                if (permissionLevel < hasPermission) {
-                    console.log(`[ RBAC ] Permission Level denial for ${name}`);
-                    await message.reply(`❌ You don't have permission to use "${name}". This command requires level ${hasPermission}.`);
-                    return;
+                try {
+                    const args = body.trim().split(/\s+/).slice(1);
+                    await command.run({ api, event, message, config, saveConfig, commands, args });
+                } catch (error) {
+                    console.error(`[ ERROR ] Command ${primaryName} failed:`, error);
                 }
             }
-
-            try {
-                // Calculate args: remove the prefix + command name
-                const splitBody = body.split(/\s+/);
-                const args = splitBody.slice(1);
-                
-                await command.run({ api, event, message, config, saveConfig, commands, args });
-            } catch (error) {
-                console.error(`[ ERROR ] Command ${name} failed:`, error);
-            }
-            break; // Stop after first match
         }
     }
 
@@ -86,32 +97,36 @@ export async function handleMessage(api: any, event: any) {
             const rbacMode = config.rbacMode || 0;
             const aiMinRole = config.aiMinRole || 0;
 
-            if (rbacMode === 2 && permissionLevel < 2) {
-                return; // Silently ignore AI in Owner-Only mode for non-owners
-            }
-            if (rbacMode === 1 && permissionLevel < 1) {
-                return; // Silently ignore AI in Admin-Only mode for users
-            }
-            if (permissionLevel < aiMinRole) {
-                return; // Silently ignore AI if user level < aiMinRole
-            }
+            if (rbacMode === 2 && permissionLevel < 2) return;
+            if (rbacMode === 1 && permissionLevel < 1) return;
+            if (permissionLevel < aiMinRole) return;
         }
 
         const aiPath = path.join(__dirname, "..", "ai");
         if (fs.existsSync(aiPath)) {
             try {
+                // Fetch last 15 messages for context from Local DB
+                const history = await db.getHistory(event.threadID, 15);
+                
                 const { chat } = require("../ai");
-            const { response, classification } = await chat(
-                message.body, 
-                event.threadID, 
-                api, 
-                event, 
-                config, 
-                Array.from(commands.keys())
-            );
-                console.log(`[ AI CLASSIFY ] Intent: ${classification.intent} | Mood: ${classification.mood}`);
-                if (response) {
-                    await message.reply(response);
+                const { response, classification } = await chat(
+                    message.body, 
+                    event.threadID, 
+                    api, 
+                    event, 
+                    config, 
+                    Array.from(commands.keys()),
+                    history
+                );
+
+                console.log(`[ AI CLASSIFY ] Intent: ${classification.intent} | Mood: ${classification.mood} | For Bot: ${classification.intent !== 'ignore'}`);
+                
+                // Final sanitize and check
+                const finalReply = response.replace(/\[.*?\]/g, "").trim();
+
+                // Only reply if it's NOT an ignore intent and has actual content
+                if (finalReply && classification.intent !== "ignore") {
+                    await message.reply(finalReply);
                 }
             } catch (error) {
                 console.error("AI Error:", error);

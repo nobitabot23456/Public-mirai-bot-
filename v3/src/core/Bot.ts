@@ -23,6 +23,11 @@ export async function startBot() {
             }
 
             console.log(`[ SUCCESS ] Logged in as ${api.getCurrentUserID()}`);
+            
+            // Initialize Scheduler
+            const { scheduler } = require("./Scheduler");
+            scheduler.init(api);
+            
             api.setOptions({ listenEvents: true, selfListen: false });
 
             api.listenMqtt(async (err: any, event: any) => {

@@ -36,6 +36,14 @@ module.exports = function (defaultFuncs, api, ctx) {
       case "\uD83D\uDC4E": //:thumbsdown:
       case "\u2764": //:heart:
       case "\uD83D\uDC97": //:glowingheart:
+      case "\u23F3": //:hourglass_flowing_sand:
+      case "\u231B": //:hourglass:
+      case "\u274C": //:x:
+      case "\u2705": //:white_check_mark:
+      case "\uD83D\uDD25": //:fire:
+      case "\u2728": //:sparkles:
+      case "\uD83D\uDE80": //:rocket:
+      case "\uD83C\uDF89": //:tada:
       case "":
         //valid
         break;
@@ -73,10 +81,7 @@ module.exports = function (defaultFuncs, api, ctx) {
         reaction = "\uD83D\uDC97";
         break;
       default:
-        if (forceCustomReaction) {
-          break;
-        }
-        return callback({ error: "Reaction is not a valid emoji." });
+        break;
     }
 
     const variables = {
