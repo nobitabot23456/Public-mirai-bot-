@@ -12,5 +12,6 @@
   "enableTypingIndicator": false,
   "typingDuration": 1000,
   "helpGrid": 2,
-  "debug": true
+  "debug": true,
+  "aiMinRole": 0
 }

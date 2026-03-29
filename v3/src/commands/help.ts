@@ -10,13 +10,34 @@ export const config = {
     usePrefix: true
 };
 
+import { getPermissionLevel } from "../core/RBAC";
+
 export async function run({ message, event, config, commands }: any) {
+    const permissionLevel = getPermissionLevel(event.senderID);
     const args = event.body.split(/\s+/).slice(1);
     const commandArg = (args[0] || "").toLowerCase();
 
+    // Filter commands based on user permission
+    const filteredCommands = new Map<string, any>();
+    for (const [name, cmd] of commands) {
+        const hasPermission = cmd.config.hasPermission || 0;
+        const rbacMode = config.rbacMode || 0;
+
+        let allowed = true;
+        if (config.rbac) {
+            if (rbacMode === 2 && permissionLevel < 2) allowed = false;
+            else if (rbacMode === 1 && permissionLevel < 1) allowed = false;
+            else if (permissionLevel < hasPermission) allowed = false;
+        }
+
+        if (allowed) {
+            filteredCommands.set(name, cmd);
+        }
+    }
+
     // ─── COMMAND DETAILS ───
-    if (commandArg && commands.has(commandArg)) {
-        const command = commands.get(commandArg);
+    if (commandArg && filteredCommands.has(commandArg)) {
+        const command = filteredCommands.get(commandArg);
         const { config: cmdConfig } = command;
         
         let info = `╭━━━[ ${cmdConfig.name.toUpperCase()} ]━━━╮\n`;
@@ -31,7 +52,7 @@ export async function run({ message, event, config, commands }: any) {
     }
 
     // ─── CATEGORY LISTING (PAGINATED) ───
-    const commandList = Array.from(commands.values());
+    const commandList = Array.from(filteredCommands.values());
     const categories = Array.from(new Set(commandList.map((cmd: any) => cmd.config.commandCategory || "General")));
     
     const itemsPerPage = 8;
@@ -81,7 +102,7 @@ export async function run({ message, event, config, commands }: any) {
     helpMsg += `╭ ──────── ╮\n`;
     helpMsg += `│ Page ${numberFontPage[currentPage - 1] || currentPage} of ${numberFontPage[totalPages - 1] || totalPages} │\n`;
     helpMsg += `╰ ──────── ╯\n`;
-    helpMsg += `◖Total: ${commands.size} commands | ${categories.length} categories◗\n\n`;
+    helpMsg += `◖Total: ${filteredCommands.size} commands | ${categories.length} categories◗\n\n`;
     
     helpMsg += `💡 Type "${config.PREFIX}help [name]" for details.\n`;
     helpMsg += `💡 Type "${config.PREFIX}help [page]" for more pages.\n`;

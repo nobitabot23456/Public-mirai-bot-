@@ -19,10 +19,11 @@ export function messageHandler({ api, event }: MessageHandlerParams) {
         attachments: attachments || [],
         
         // Helper methods
-        reply: (text: string) => {
+        reply: (msg: string | any) => {
+            const text = typeof msg === "string" ? msg : (msg.body || "");
             const truncated = text.split("\n")[0].substring(0, 50) + (text.includes("\n") || text.length > 50 ? "..." : "");
             return new Promise((resolve, reject) => {
-                api.sendMessage(text, threadID, (err: any, info: any) => {
+                api.sendMessage(msg, threadID, (err: any, info: any) => {
                     if (err) {
                         console.error(`[ ERROR ] Reply failed:`, err);
                         reject(err);
@@ -34,10 +35,11 @@ export function messageHandler({ api, event }: MessageHandlerParams) {
             });
         },
         
-        send: (text: string) => {
+        send: (msg: string | any) => {
+            const text = typeof msg === "string" ? msg : (msg.body || "");
             const truncated = text.split("\n")[0].substring(0, 50) + (text.includes("\n") || text.length > 50 ? "..." : "");
             return new Promise((resolve, reject) => {
-                api.sendMessage(text, threadID, (err: any, info: any) => {
+                api.sendMessage(msg, threadID, (err: any, info: any) => {
                     if (err) {
                         console.error(`[ ERROR ] Send failed:`, err);
                         reject(err);
@@ -50,10 +52,19 @@ export function messageHandler({ api, event }: MessageHandlerParams) {
         },
         
         react: (reaction: string) => {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 api.setMessageReaction(reaction, messageID, (err: any) => {
-                    if (err) reject(err);
-                    else resolve(true);
+                    if (err) console.error(`[ ERROR ] Reaction failed (${reaction}):`, err);
+                    resolve(true); // Always resolve to avoid crashing command
+                });
+            });
+        },
+        
+        reaction: (reaction: string) => {
+            return new Promise((resolve) => {
+                api.setMessageReaction(reaction, messageID, (err: any) => {
+                    if (err) console.error(`[ ERROR ] Reaction failed (${reaction}):`, err);
+                    resolve(true); // Always resolve to avoid crashing command
                 });
             });
         },

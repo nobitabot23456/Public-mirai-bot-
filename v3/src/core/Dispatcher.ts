@@ -67,7 +67,11 @@ export async function handleMessage(api: any, event: any) {
             }
 
             try {
-                await command.run({ api, event, message, config, saveConfig, commands });
+                // Calculate args: remove the prefix + command name
+                const splitBody = body.split(/\s+/);
+                const args = splitBody.slice(1);
+                
+                await command.run({ api, event, message, config, saveConfig, commands, args });
             } catch (error) {
                 console.error(`[ ERROR ] Command ${name} failed:`, error);
             }
@@ -77,10 +81,26 @@ export async function handleMessage(api: any, event: any) {
 
     // AI routing for non-command messages
     if (!commandMatched && message.body && !event.senderID.includes(api.getCurrentUserID())) {
+        // Check AI permissions if RBAC is enabled
+        if (config.rbac) {
+            const rbacMode = config.rbacMode || 0;
+            const aiMinRole = config.aiMinRole || 0;
+
+            if (rbacMode === 2 && permissionLevel < 2) {
+                return; // Silently ignore AI in Owner-Only mode for non-owners
+            }
+            if (rbacMode === 1 && permissionLevel < 1) {
+                return; // Silently ignore AI in Admin-Only mode for users
+            }
+            if (permissionLevel < aiMinRole) {
+                return; // Silently ignore AI if user level < aiMinRole
+            }
+        }
+
         const aiPath = path.join(__dirname, "..", "ai");
         if (fs.existsSync(aiPath)) {
             try {
-            const { chat } = require("../ai");
+                const { chat } = require("../ai");
             const { response, classification } = await chat(
                 message.body, 
                 event.threadID, 
