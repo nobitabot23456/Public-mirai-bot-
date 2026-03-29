@@ -6,9 +6,7 @@ var log = require("npmlog");
 var { checkForFCAUpdate } = require("./checkUpdate");
 const fs = require('fs');
 const path = require('path');
-/*var { getThemeColors } = require("../../func/utils/log.js");
-var logger = require("../../func/utils/log.js");
-var { cra, cv, cb, co } = getThemeColors();*/
+
 log.maxRecordSize = 100;
 var checkVerified = null;
 const Boolean_Option = ['online', 'selfListen', 'listenEvents', 'updatePresence', 'forceLogin', 'autoMarkDelivery', 'autoMarkRead', 'listenTyping', 'autoReconnect', 'emitReady'];

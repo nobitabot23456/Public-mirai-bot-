@@ -1,4 +1,4 @@
-module.exports.config = {
+export const config = {
     name: "prefix",
     version: "1.0.0",
     hasPermission: 0,
@@ -10,8 +10,8 @@ module.exports.config = {
     usePrefix: false
 };
 
-module.exports.run = async function({ api, event, message }) {
-    const config = require("../../config.json");
-    const currentPrefix = config.PREFIX;
+export async function run({ api, event, message }: any) {
+    const configData = require("../../config.json");
+    const currentPrefix = configData.PREFIX;
     return message.reply(`Current prefix is: ${currentPrefix}`);
-};
+}

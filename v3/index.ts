@@ -1,16 +1,24 @@
-const fs = require("fs-extra");
-const path = require("path");
-require("dotenv").config();
-const login = require("./login");
-const messageHandler = require("./handlers/messageHandler");
+import fs from "fs-extra";
+import path from "path";
+import dotenv from "dotenv";
+dotenv.config({ override: true });
+
+const login = require("./login"); 
+import { messageHandler } from "./handlers/messageHandler";
 const config = require("./config.json");
 
-const commands = new Map();
+const commands = new Map<string, any>();
+
+function getPermissionLevel(senderID: string): number {
+    if (config.BOTOWNER?.includes(senderID)) return 2;
+    if (config.ADMINBOT?.includes(senderID)) return 1;
+    return 0;
+}
 
 // Load commands from src/commands/
 const commandsPath = path.join(__dirname, "src", "commands");
 if (fs.existsSync(commandsPath)) {
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".ts") || file.endsWith(".js"));
     for (const file of commandFiles) {
         const command = require(path.join(commandsPath, file));
         if (command.config && command.config.name) {
@@ -21,14 +29,34 @@ if (fs.existsSync(commandsPath)) {
 }
 
 // Function to handle messages
-async function handleMessage(api, event) {
+async function handleMessage(api: any, event: any) {
     const message = messageHandler({ api, event });
     const body = (message.body || "").toLowerCase().trim();
+    
+    console.log(`[ MSG ] From: ${event.senderID} | Body: "${body}"`);
 
     let commandMatched = false;
 
+    const permissionLevel = getPermissionLevel(event.senderID);
+
     // Basic command dispatcher
     for (const [name, command] of commands) {
+        const hasPermission = command.config.hasPermission || 0;
+        
+        // Check permission
+        if (permissionLevel < hasPermission) {
+            // Only respond if the command was actually called but permission failed
+            const isPrefixedMatch = body.startsWith(config.PREFIX + name) && command.config.usePrefix;
+            const isNoPrefixMatch = body === name && !command.config.usePrefix;
+            
+            if (isPrefixedMatch || isNoPrefixMatch) {
+                console.log(`[ RBAC ] User ${event.senderID} denied access to ${name} (lvl ${permissionLevel} < ${hasPermission})`);
+                await message.reply(`❌ You don't have permission to use "${name}". This command requires level ${hasPermission}.`);
+                return;
+            }
+            continue;
+        }
+
         // Handling noprefix commands
         if (body === name && !command.config.usePrefix) {
             commandMatched = true;
@@ -52,8 +80,8 @@ async function handleMessage(api, event) {
     // AI routing for non-command messages
     if (!commandMatched && message.body && !event.senderID.includes(api.getCurrentUserID())) {
         try {
-            const ai = require("./src/ai/agent");
-            const { response, classification } = await ai.chat(message.body, event.threadID);
+            const { chat } = require("./src/ai");
+            const { response, classification } = await chat(message.body, event.threadID);
             
             console.log(`[ AI CLASSIFY ] Intent: ${classification.intent} | Mood: ${classification.mood}`);
             
@@ -76,7 +104,7 @@ async function startBot() {
 
         const appState = JSON.parse(fs.readFileSync(appStatePath, "utf8"));
 
-        login({ appState }, (err, api) => {
+        login({ appState }, (err: any, api: any) => {
             if (err) {
                 console.error("Login Error:", err);
                 return;
@@ -86,26 +114,13 @@ async function startBot() {
 
             api.setOptions({ listenEvents: true, selfListen: false });
 
-            api.listenMqtt(async (err, event) => {
+            api.listenMqtt(async (err: any, event: any) => {
                 if (err) {
                     console.error("Listen Error:", err);
                     return;
                 }
 
                 if (event.type === "message" || event.type === "message_reply") {
-                    // const messageInfo = `[ MESSAGE ] From: ${event.senderID} | Body: ${event.body || "(No body)"}`;
-                    // console.log(messageInfo);
-
-                    // if (event.attachments && event.attachments.length > 0) {
-                    //     event.attachments.forEach((att, i) => {
-                    //         console.log(`  - Attachment ${i + 1}: ${att.type} | URL: ${att.url || att.previewUrl || "N/A"}`);
-                    //     });
-                    // }
-
-                    // if (event.type === "message_reply") {
-                    //     console.log(`  - Reply to: ${event.messageReply.messageID} | Body: ${event.messageReply.body}`);
-                    // }
-
                     await handleMessage(api, event);
                 }
             });
