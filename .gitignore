@@ -18,7 +18,7 @@ data/
 data/*.json
 data/*.txt
 
-/ai/
+v3/src/ai/
 
 includes/database/*
 database/*
