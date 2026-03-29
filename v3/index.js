@@ -51,9 +51,11 @@ async function handleMessage(api, event) {
 
     // AI routing for non-command messages
     if (!commandMatched && message.body && !event.senderID.includes(api.getCurrentUserID())) {
-        try {
             const ai = require("./src/ai/agent");
-            const response = await ai.chat(message.body, event.threadID);
+            const { response, classification } = await ai.chat(message.body, event.threadID);
+            
+            console.log(`[ AI CLASSIFY ] Intent: ${classification.intent} | Mood: ${classification.mood}`);
+            
             if (response) {
                 await message.reply(response);
             }
