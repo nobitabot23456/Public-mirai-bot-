@@ -143,7 +143,7 @@ function buildAPI(globalOptions, html, jar) {
     if (!userCookie && !tiktikCookie) {
         const cookieNames = cookies.map(c => c.key).join(", ");
         log.error("Login", `Error! Your cookiestate is not valid! Found cookies: [${cookieNames || "NONE"}]. Try refreshing your appstate.json or clearing cache.`);
-        return; 
+        return;
     }
     if (html.includes("/checkpoint/block/?next")) {
 
@@ -159,8 +159,8 @@ function buildAPI(globalOptions, html, jar) {
     try {
         const endpointMatch = html.match(/"endpoint":"([^"]+)"/);
         if (endpointMatch.input.includes("601051028565049")) {
-          console.log(`login error.`);
-          ditconmemay = true;
+            console.log(`login error.`);
+            ditconmemay = true;
         }
         if (endpointMatch) {
             mqttEndpoint = endpointMatch[1].replace(/\\\//g, '/');
@@ -302,26 +302,28 @@ function buildAPI(globalOptions, html, jar) {
     };
     //if (noMqttData) api.htmlData = noMqttData;
     require('fs').readdirSync(__dirname + '/src/').filter(v => v.endsWith('.js')).forEach(v => { api[v.replace('.js', '')] = require(`./src/${v}`)(utils.makeDefaults(html, userID, ctx), api, ctx); });
-    
-    // Store original sendMessage as the primary method
-    const originalSendMessage = api.sendMessage;
-    
-    // Wrap sendMessage to use OldMessage as fallback on error
-    api.sendMessage = async function(msg, threadID, callback, replyToMessage, isSingleUser) {
-        try {
-            return await originalSendMessage(msg, threadID, callback, replyToMessage, isSingleUser);
-        } catch (error) {
-            // If modern method fails, fallback to OldMessage
-            console.log('sendMessage failed, using OldMessage fallback:', error.message);
-            return api.OldMessage(msg, threadID, callback, replyToMessage, isSingleUser);
-        }
-    };
-    
+    // // Store original sendMessage as the primary method
+    // const originalSendMessage = api.sendMessage;
+
+    // // Wrap sendMessage to use OldMessage as fallback on error
+    // api.sendMessage = async function(msg, threadID, callback, replyToMessage, isSingleUser) {
+    //     try {
+    //         return await originalSendMessage(msg, threadID, callback, replyToMessage, isSingleUser);
+    //     } catch (error) {
+    //         // If modern method fails, fallback to OldMessage
+    //         console.log('sendMessage failed, using OldMessage fallback:', error.message);
+    //         return api.OldMessage(msg, threadID, callback, replyToMessage, isSingleUser);
+    //     }
+    // };
+
+    // Use OldMessage as the primary sendMessage method as requested
+    api.sendMessage = api.OldMessage;
+
     // Provide explicit method for DM sending using OldMessage
-    api.sendMessageDM = function(msg, threadID, callback, replyToMessage) {
+    api.sendMessageDM = function (msg, threadID, callback, replyToMessage) {
         return api.OldMessage(msg, threadID, callback, replyToMessage, true);
     };
-    
+
     api.listen = api.listenMqtt;
     return {
         ctx,
