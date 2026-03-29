@@ -20,30 +20,32 @@ export function messageHandler({ api, event }: MessageHandlerParams) {
         
         // Helper methods
         reply: (text: string) => {
+            const truncated = text.split("\n")[0].substring(0, 50) + (text.includes("\n") || text.length > 50 ? "..." : "");
             return new Promise((resolve, reject) => {
                 api.sendMessage(text, threadID, (err: any, info: any) => {
                     if (err) {
                         console.error(`[ ERROR ] Reply failed:`, err);
                         reject(err);
                     } else {
-                        console.log(`[ SUCCESS ] Reply sent to ${threadID}`);
+                        console.log(`[ SUCCESS ] Reply sent to ${threadID}: "${truncated}"`);
                         resolve(info);
                     }
-                }, messageID, event.isGroup);
+                }, messageID);
             });
         },
         
         send: (text: string) => {
+            const truncated = text.split("\n")[0].substring(0, 50) + (text.includes("\n") || text.length > 50 ? "..." : "");
             return new Promise((resolve, reject) => {
                 api.sendMessage(text, threadID, (err: any, info: any) => {
                     if (err) {
                         console.error(`[ ERROR ] Send failed:`, err);
                         reject(err);
                     } else {
-                        console.log(`[ SUCCESS ] Message sent to ${threadID}`);
+                        console.log(`[ SUCCESS ] Message sent to ${threadID}: "${truncated}"`);
                         resolve(info);
                     }
-                }, null, event.isGroup);
+                }, null);
             });
         },
         

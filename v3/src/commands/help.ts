@@ -26,7 +26,7 @@ export async function run({ message, event, config, commands }: any) {
         info += `🔒 Permission: Level ${cmdConfig.hasPermission || 0}\n`;
         info += `📖 Usage: ${config.PREFIX}${cmdConfig.name} ${cmdConfig.usages || ""}\n`;
         info += `👤 Credits: ${cmdConfig.credits || "Unknown"}\n`;
-        info += `╰━━━━━━━━━━━━━━━━━━╯`;
+        info += `╰━━━━━━━━━━╯`;
         return message.reply(info);
     }
 

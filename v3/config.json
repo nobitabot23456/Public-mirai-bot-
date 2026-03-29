@@ -1,5 +1,5 @@
 {
-  "BOTNAME": "Cyber-Bot v3",
+  "BOTNAME": "ANYA FORGER",
   "PREFIX": "!",
   "rbac": true,
   "rbacMode": 2,
@@ -11,5 +11,6 @@
   ],
   "enableTypingIndicator": false,
   "typingDuration": 1000,
-  "helpGrid": 2
+  "helpGrid": 2,
+  "debug": true
 }

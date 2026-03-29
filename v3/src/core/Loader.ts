@@ -3,7 +3,7 @@ import path from "path";
 
 export const commands = new Map<string, any>();
 
-export function loadCommands(dir: string = path.join(process.cwd(), "v3", "src", "commands")) {
+export function loadCommands(dir: string = path.join(process.cwd(), "src", "commands")) {
     if (!fs.existsSync(dir)) return;
     const files = fs.readdirSync(dir);
     for (const file of files) {
