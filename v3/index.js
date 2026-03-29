@@ -51,6 +51,7 @@ async function handleMessage(api, event) {
 
     // AI routing for non-command messages
     if (!commandMatched && message.body && !event.senderID.includes(api.getCurrentUserID())) {
+        try {
             const ai = require("./src/ai/agent");
             const { response, classification } = await ai.chat(message.body, event.threadID);
             
