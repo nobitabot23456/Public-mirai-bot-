@@ -1,165 +1,144 @@
-async function classifyInput(userInput, isReplyToBot = false) {
-  const axios = require('axios');
-  try {
-    // console.log(`???????? ${global.config.BELAAI_API_URL}/bela/classify`)
-    // Enhanced prompt for replies to bot messages
-    let promptInput = userInput;
-    if (isReplyToBot) {
-      promptInput = `[REPLY TO BOT] ${userInput} - This user is replying to the bot's message. Classify as "command" if they want to execute a bot command, or "general" for conversation.`;
-    }
-    
-    const response = await axios.post(`${global.config.BELAAI_API_URL}/bela/classify`, { input: promptInput });
-    return response.data;
-  } catch (error) {
-    console.error('Error calling classification API:', error.message);
-    return { type: "unknown", input: userInput }; // Don't default to general - let logic decide  // Closes #14
-  }
-}
+const { runAkaneAgent, injectMemory } = require("../../src/ai/agent");
 
 module.exports = function ({ api, models, Users, Threads, Currencies, ...rest }) {
   const handleCommand = require("./handleCommand")({ api, models, Users, Threads, Currencies, ...rest });
 
   return async function ({ event, ...rest2 }) {
-    const { body, senderID, threadID, messageID, messageReply } = event;
+    const { body, senderID, threadID, messageID } = event;
 
     if (!body || typeof body !== "string" || body.trim() === "") {
       return;
     }
 
-    // Check if message starts with prefix - ALWAYS prioritize prefix commands
     const trimmedBody = body.trim();
+    
+    const commands = global.client.commands;
+    let isCommand = false;
+    let matchedCommandName = null;
+    let matchedArgs = "";
+
+    const mentionRegex = /^akane\b/i; // Only match if the sentence starts with her name
+    const botID = api.getCurrentUserID();
+    const isReplyToBot = event.messageReply && event.messageReply.senderID === botID;
+    const isPM = event.senderID === threadID;
+
+    // (A) Shared Context Logic: Akane stays "awake" for the whole group for 60 seconds after her last reply.
+    if (!global.akaneState) global.akaneState = {};
+    if (!global.akaneState[threadID]) global.akaneState[threadID] = { lastRepliedTime: 0, pendingUser: null, pendingTime: 0 };
+    
+    const now = Date.now();
+    // Awake if she spoke recently OR if she is currently "thinking" for this user
+    const isConsecutiveTalk = !isPM && (
+        (now - global.akaneState[threadID].lastRepliedTime < 60000) || 
+        (global.akaneState[threadID].pendingUser === senderID && now - global.akaneState[threadID].pendingTime < 15000)
+    );
+    
+    if (global.akaneState[threadID].lastRepliedTime > 0 && !isConsecutiveTalk) {
+        console.log(`[LOCK] Expired for thread ${threadID} (Silent Mode restored)`);
+        global.akaneState[threadID].lastRepliedTime = 0;
+        global.akaneState[threadID].pendingUser = null;
+    }
+
+
+
+
+    // Fast track explicit prefixed commands
     if (trimmedBody.startsWith(global.config.PREFIX)) {
-      console.log(`🔄 Legacy Handler: Prefixed message detected - "${trimmedBody}"`);
-      handleCommand({ event, ...rest2 });
+      const commandName = trimmedBody.slice(global.config.PREFIX.length).split(/\s+/)[0].toLowerCase();
+      // Only treat as command if it actually exists in the client
+      if (global.client.commands.has(commandName) || 
+          Array.from(global.client.commands.values()).some(c => c.config && c.config.aliases && c.config.aliases.includes(commandName))) {
+        isCommand = true;
+      }
+    } 
+
+
+    if (isCommand) {
+      // Proxy api.sendMessage strictly to read the bot's response and save it to the AI's memory
+      const proxyApi = { ...api };
+      proxyApi.sendMessage = function (msg, tid, cb, mid) {
+          let textLog = "[Rich Attachment / Canvas / No Text]";
+          if (typeof msg === 'string') textLog = msg;
+          else if (msg && msg.body) textLog = msg.body;
+          
+          injectMemory(event, trimmedBody, textLog).catch(e => console.error(e));
+          
+          // Call original sendMessage
+          return api.sendMessage(msg, tid, cb, mid);
+      };
+
+      handleCommand({ event, api: proxyApi, ...rest2 });
       return;
     }
+    // --- GROUP CHAT HISTORY LOGIC --- //
+    if (!global.gcHistory) global.gcHistory = {};
+    if (!global.gcHistory[threadID]) global.gcHistory[threadID] = [];
 
-    // Check if this is a reply to the bot
-    const botID = global.client.api.getCurrentUserID();
-    const isReplyToBot = messageReply && messageReply.senderID === botID;
+    let senderName = "User";
+    try {
+        senderName = await Users.getNameUser(senderID) || senderID;
+    } catch(e) {}
+
+    // Add to rolling history
+    global.gcHistory[threadID].push(`[${senderName}]: ${trimmedBody}`);
+    if (global.gcHistory[threadID].length > 15) {
+        global.gcHistory[threadID].shift();
+    }
+
+    // Determine how to route to Akane Owari AI
+    let aiPrompt = trimmedBody;
     
-    if (isReplyToBot) {
-      console.log(`🔄 Reply to bot detected - enhancing AI classification`);
-    }
-
-    // Classify the input
-    const classification = await classifyInput(trimmedBody, isReplyToBot);
-
-    // ALWAYS check if first word matches any command name or alias (regardless of AI classification)
-    const words = trimmedBody.split(/\s+/);
-    const firstWord = words[0].toLowerCase();
-    const commands = global.client.commands;
+    const isDirectMention = mentionRegex.test(trimmedBody);
+    const isExplicitlyCalled = isPM || isDirectMention || isReplyToBot || isConsecutiveTalk;
     
-    let potentialCommand = null;
-    for (const [name, cmd] of commands) {
-      if (firstWord === name.toLowerCase()) {
-        potentialCommand = name;
-        break;
-      }
-      if (cmd.config && cmd.config.aliases) {
-        for (const alias of cmd.config.aliases) {
-          if (firstWord === alias.toLowerCase()) {
-            potentialCommand = name;
-            break;
-          }
-        }
-      }
-      if (potentialCommand) break;
+    console.log(`[AI ROUTE] sender=${senderID} isPM=${isPM} mention=${isDirectMention} replyBot=${isReplyToBot} lock=${isConsecutiveTalk} → ${isExplicitlyCalled ? 'ENGAGE' : 'SILENT'}`);
+    
+    if (!isExplicitlyCalled) {
+        // AMBIENT GC MODE: The humans are talking to each other.
+        // We do NOT hit the LLM. We just silently recorded their conversation history above.
+        return;
+    } else if (!isPM) {
+        // EXPLICIT GC MENTION: They brought up Akane in the group chat!
+        // So we feed her what everyone was just saying so she is totally aware of the context!
+        aiPrompt = `[GROUP CHAT CONTEXT (Last 15 Messages)]\n`;
+        aiPrompt += global.gcHistory[threadID].join("\n");
+        aiPrompt += `\n\n[SYSTEM CHECK] The above is humans talking in a group chat. The user has just explicitly addressed you. Reply to their message naturally:\n${trimmedBody}`;
     }
 
-    // If we found a potential command by first word, treat as command immediately
-    if (potentialCommand) {
-      console.log(`🔍 Command detected by first word: "${potentialCommand}" - processing as command`);
-      
-      // Special handling for help commands with arguments
-      if (potentialCommand === "help" && words.length > 1) {
-        // For "help ping", construct "?help ping"
-        const helpArg = words.slice(1).join(" ");
-        const modifiedEvent = { ...event, body: global.config.PREFIX + "help " + helpArg };
-        handleCommand({ event: modifiedEvent, ...rest2 });
-        return;
-      } else if (potentialCommand === firstWord) {
-        // Check if this command requires a prefix
-        const command = commands.get(potentialCommand);
-        
-        // Auto-set usePrefix for commands without prefix/usePrefix configuration
-        let usePrefix = true;
-        if (command && command.config) {
-          if (typeof command.config.usePrefix !== "undefined") {
-            usePrefix = command.config.usePrefix;
-          } else if (typeof command.config.prefix !== "undefined") {
-            usePrefix = command.config.prefix;
-          } else {
-            usePrefix = true; // Default to true for commands without configuration
-          }
-        }
-        
-        // Get remaining arguments
-        const remainingArgs = words.slice(1).join(" ");
-        
-        let commandBody;
-        if (usePrefix) {
-          // Commands that require prefix
-          commandBody = remainingArgs ? global.config.PREFIX + potentialCommand + " " + remainingArgs : global.config.PREFIX + potentialCommand;
-        } else {
-          // Commands that don't require prefix (like baby)
-          commandBody = remainingArgs ? potentialCommand + " " + remainingArgs : potentialCommand;
-        }
-        
-        const modifiedEvent = { ...event, body: commandBody };
-        handleCommand({ event: modifiedEvent, ...rest2 });
-        return;
-      }
-    }
+    // AI logic starts here for non-prefixed or conversational messages
+    // [REMOVED TYPING INDICATOR PER USER REQUEST]
 
-    // No command found by first word, proceed with AI classification only
-    if (classification.type === "command") {
-      console.log(`🤖 AI Classification: Command - "${classification.input}"`);
-      
-      // Try to find command in the classified input
-      const input = classification.input.toLowerCase();
-      let matchedCommand = null;
-      
-      for (const [name, cmd] of commands) {
-        if (input.includes(name.toLowerCase())) {
-          matchedCommand = name;
-          break;
-        }
-        // Check aliases
-        if (cmd.config.aliases) {
-          for (const alias of cmd.config.aliases) {
-            if (input.includes(alias.toLowerCase())) {
-              matchedCommand = name;
-              break;
-            }
-          }
-        }
-        if (matchedCommand) break;
-      }
+    // Set pending state to keep lock fluid while thinking
+    global.akaneState[threadID].pendingUser = senderID;
+    global.akaneState[threadID].pendingTime = Date.now();
+    
+    try {
 
-      if (matchedCommand) {
-        console.log(`🎯 AI matched command: "${matchedCommand}"`);
-        // Process this as a command (similar logic as above)
-        const command = commands.get(matchedCommand);
-        let usePrefix = true;
+        const response = await runAkaneAgent(api, event, aiPrompt);
         
-        if (command && command.config) {
-          if (typeof command.config.usePrefix !== "undefined") {
-            usePrefix = command.config.usePrefix;
-          } else if (typeof command.config.prefix !== "undefined") {
-            usePrefix = command.config.prefix;
-          }
+        // Clear pending state once done
+        if (global.akaneState[threadID].pendingUser === senderID) {
+            global.akaneState[threadID].pendingUser = null;
         }
-        
-        const commandBody = usePrefix ? global.config.PREFIX + matchedCommand : matchedCommand;
-        const modifiedEvent = { ...event, body: commandBody };
-        handleCommand({ event: modifiedEvent, ...rest2 });
-      } else {
-        console.log(`❓ AI classified as command but no matching command found`);
-      }
-    } else {
-      // General conversation - no action since general chat is removed
-      console.log(`💬 AI Classification: ${classification.type} - "${classification.input}" - no general chat handler`);
+
+        // Let the bot actually reply with the text response if she didn't choose to ignore
+        if (response && response.trim() !== 'IGNORE' && typeof response === 'string' && response.trim().length > 0) {
+            api.sendMessage(response, threadID, messageID);
+            
+            // Stay "awake" in this thread for the next 60 seconds
+            global.akaneState[threadID].lastRepliedTime = Date.now();
+
+            // push her own reply to history so she remembers what she said
+            global.gcHistory[threadID].push(`[Akane Owari (You)]: ${response}`);
+            if (global.gcHistory[threadID].length > 15) global.gcHistory[threadID].shift();
+        } else if (response && response.trim() === 'IGNORE') {
+            console.log(`[AI ROUTE] Akane chose to IGNORE this message. Returning to Silent Mode.`);
+            // Force silence immediately
+            global.akaneState[threadID].lastRepliedTime = 0;
+            global.akaneState[threadID].pendingUser = null;
+        }
+    } catch (error) {
+        console.error("Agent failed:", error);
     }
   };
 };

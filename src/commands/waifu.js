@@ -26,13 +26,15 @@ module.exports.run = async function ({ api, event, args }) {
       "https://api.waifu.pics/many/sfw/waifu",
       { exclude: [], amount: amount }
     );
-    const allImages = [];
-    for (let i = 0; i < Math.min(data.files.length, amount); i++) {
-      const img = await axios.get(data.files[i], { responseType: "arraybuffer" });
+    const imagePromises = data.files.slice(0, amount).map(async (url, i) => {
+      const img = await axios.get(url, { responseType: "arraybuffer" });
       const filePath = __dirname + `/cache/waifu_${i}.png`;
       fs.writeFileSync(filePath, Buffer.from(img.data));
-      allImages.push(fs.createReadStream(filePath));
-    }
+      return fs.createReadStream(filePath);
+    });
+
+    const allImages = await Promise.all(imagePromises);
+
 
     const msg = `Here are your ${allImages.length} waifu images`;
     return api.sendMessage(

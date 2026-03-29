@@ -50,7 +50,9 @@ module.exports = {
 			return text;
 		});
 
-		const date = checkDate(args[0]);
+		let targetDateStr = args.find(a => /today|tomorrow|yesterday|now|\//i.test(a)) || "today";
+		const date = checkDate(targetDateStr);
+		
 		if (!date)
 			return message.reply(getText("invalidDateFormat"));
 
@@ -110,7 +112,7 @@ module.exports = {
 				}
 
 				const pathSave = path.join(tmpDir, `wallMoon_${Date.now()}.png`);
-				fs.writeFileSync(pathSave, canvas.toBuffer());
+				fs.writeFileSync(pathSave, canvas.toBuffer('image/png'));
 				
 				message.reply({
 					body: msg,
@@ -183,10 +185,18 @@ function centerImage(ctx, img, x, y, sizeX, sizeY) {
 }
 
 function checkDate(date) {
+	if (!date) return moment().format('YYYY/MM/DD');
+	
+	const d = date.toLowerCase();
+	if (d === 'today' || d === 'now') return moment().format('YYYY/MM/DD');
+	if (d === 'tomorrow') return moment().add(1, 'days').format('YYYY/MM/DD');
+	if (d === 'yesterday') return moment().subtract(1, 'days').format('YYYY/MM/DD');
+
 	const [day0, month0, year0] = (date || "").split('/');
 	const day = (day0 || "").length == 1 ? "0" + day0 : day0;
 	const month = (month0 || "").length == 1 ? "0" + month0 : month0;
-	const year = year0 || "";
+	// if year is not provided, default to current year
+	const year = year0 || moment().format('YYYY');
 	const newDateFormat = year + "/" + month + "/" + day;
 	return moment(newDateFormat, 'YYYY/MM/DD', true).isValid() ? newDateFormat : false;
 }

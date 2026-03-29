@@ -72,7 +72,7 @@ module.exports.run = async function({ api, event, args }) {
     const lines = await this.wrapText(ctx, text, 1160);
     ctx.fillText(lines.join('\n'), 60,165);//comment
     ctx.beginPath();
-    const imageBuffer = canvas.toBuffer();
+    const imageBuffer = canvas.toBuffer('image/png');
     fs.writeFileSync(pathImg, imageBuffer);
 return api.sendMessage({ attachment: fs.createReadStream(pathImg) }, threadID, () => fs.unlinkSync(pathImg), messageID);        
   }

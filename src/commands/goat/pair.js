@@ -112,7 +112,7 @@ module.exports = {
     ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
     ctx.drawImage(baseAvt1, 111, 175, 330, 330);
     ctx.drawImage(baseAvt2, 1018, 173, 330, 330);
-    const imageBuffer = canvas.toBuffer();
+    const imageBuffer = canvas.toBuffer('image/png');
     fs.writeFileSync(pathImg, imageBuffer);
     fs.removeSync(pathAvt1);
     fs.removeSync(pathAvt2);
