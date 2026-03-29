@@ -1,5 +1,6 @@
 {
   "BOTNAME": "Cyber-Bot v3",
   "PREFIX": "!",
-  "ADMINBOT": ["100002672611442"]
+  "ADMINBOT": ["100002672611442"],
+  "enableTypingIndicator": false
 }

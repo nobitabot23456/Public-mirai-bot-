@@ -205,15 +205,6 @@ function buildAPI(globalOptions, html, jar) {
             }
         }
 
-        const fcaConfigPath = path.join(__dirname, 'config.json');
-        if (fs.existsSync(fcaConfigPath)) {
-            const fcaConfig = JSON.parse(fs.readFileSync(fcaConfigPath, 'utf8'));
-            if (fcaConfig && typeof fcaConfig === 'object') {
-                if (typeof fcaConfig.enableTypingIndicator !== 'undefined') config.enableTypingIndicator = fcaConfig.enableTypingIndicator;
-                if (typeof fcaConfig.typingDuration !== 'undefined') config.typingDuration = fcaConfig.typingDuration;
-            }
-        }
-
         if (global.GoatBot && global.GoatBot.config) {
             if (typeof global.GoatBot.config.enableTypingIndicator !== 'undefined') config.enableTypingIndicator = global.GoatBot.config.enableTypingIndicator;
             if (typeof global.GoatBot.config.typingDuration !== 'undefined') config.typingDuration = global.GoatBot.config.typingDuration;
@@ -233,14 +224,6 @@ function buildAPI(globalOptions, html, jar) {
                 if (rootConfig && typeof rootConfig === 'object') {
                     if (typeof rootConfig.enableTypingIndicator !== 'undefined') updatedConfig.enableTypingIndicator = rootConfig.enableTypingIndicator;
                     if (typeof rootConfig.typingDuration !== 'undefined') updatedConfig.typingDuration = rootConfig.typingDuration;
-                }
-            }
-
-            if (fs.existsSync(path.join(__dirname, 'config.json'))) {
-                const fcaConfig = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
-                if (fcaConfig && typeof fcaConfig === 'object') {
-                    if (typeof fcaConfig.enableTypingIndicator !== 'undefined') updatedConfig.enableTypingIndicator = fcaConfig.enableTypingIndicator;
-                    if (typeof fcaConfig.typingDuration !== 'undefined') updatedConfig.typingDuration = fcaConfig.typingDuration;
                 }
             }
 
