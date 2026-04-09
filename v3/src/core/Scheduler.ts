@@ -4,13 +4,22 @@ import { db, ScheduledTask } from './Database';
 class SchedulerService {
     private api: any;
 
+    private cronTask: any;
+
     public init(api: any) {
         this.api = api;
         // Check for due tasks every minute
-        cron.schedule('* * * * *', () => {
+        this.cronTask = cron.schedule('* * * * *', () => {
             this.checkTasks();
         });
         console.log("[ SCHEDULER ] Message Scheduler Started.");
+    }
+
+    public stop() {
+        if (this.cronTask) {
+            this.cronTask.stop();
+            console.log("[ SCHEDULER ] Message Scheduler Stopped.");
+        }
     }
 
     private async checkTasks() {

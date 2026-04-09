@@ -1,6 +1,7 @@
 {
-  "BOTNAME": "ANYA FORGER",
+  "BOTNAME": "AKANE",
   "PREFIX": "!",
+  "jailbreak": true,
   "rbac": true,
   "rbacMode": 2,
   "ADMINBOT": [
@@ -13,5 +14,6 @@
   "typingDuration": 1000,
   "helpGrid": 2,
   "debug": true,
-  "aiMinRole": 0
+  "aiMinRole": 0,
+  "persona": "akane"
 }
