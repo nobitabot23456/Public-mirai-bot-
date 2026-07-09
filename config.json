@@ -37,10 +37,10 @@
   },
   "commandDisabled": [],
   "eventDisabled": [],
-  "BOTNAME": "SORA BOT",
-  "PREFIX": "?",
+  "BOTNAME": "sadia bot",
+  "PREFIX": "/",
   "ADMINBOT": [
-    "100002672611442"
+    "100089702123718"
   ],
   "OWNER": [
     "100002672611442"
