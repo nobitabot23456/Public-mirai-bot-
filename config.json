@@ -38,7 +38,7 @@
   "commandDisabled": [],
   "eventDisabled": [],
   "BOTNAME": "sadia bot",
-  "PREFIX": "/",
+  "PREFIX": ".",
   "ADMINBOT": [
     "100089702123718"
   ],
